@@ -1,0 +1,5 @@
+{
+  "version": "v1.2.2",
+  "download_url": "https://github.com/loserrc/AI-Poxy-tools/releases/download/v1.2.2/AI-Poxy-Tools.exe",
+  "changelog": "v1.2.2 更新内容：\n- 🏷️ 项目更名：Trae-Poxy → AI Poxy Tools\n- 🧩 打包产物命名统一：AI-Poxy-Tools.exe\n- 🧾 版本信息统一：README / .env.example / latest.json / 安装脚本"
+}

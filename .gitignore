@@ -1,0 +1,14 @@
+certs/
+config.json
+.venv/
+__pycache__/
+logs/
+.poxy/
+dist/
+build/
+.env
+*.log
+*.pyc
+.python-version
+.claude/
+Output/
