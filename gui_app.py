@@ -1,3 +1,14 @@
+"""
+@Project: AI Poxy Tools
+@File: gui_app.py
+@Description: PySide6 GUI — system tray, service lifecycle, hosts/CA management, and config editor.
+@Author: 颖馨瑶 (Ying Xinyao)
+@Contact: admin@loserrc.com | QQ: 1129414920
+@Date: 2026-02-25
+@Version: v1.2.2
+@Copyright: (c) 2026 Ying Xinyao. All rights reserved.
+"""
+
 import json
 import subprocess
 import sys
@@ -37,7 +48,7 @@ def resolve_resource(rel_path: str) -> Path:
 ROOT = app_root()
 CONFIG_PATH = ROOT / "config.json"
 PID_PATH = ROOT / ".poxy" / "service.pid"
-HOSTS_PATH = Path(r"C:\Windows\System32\drivers\etc\hosts")
+HOSTS_PATH = Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "drivers" / "etc" / "hosts"
 ENV_PATH = ROOT / ".env"
 
 
@@ -214,7 +225,7 @@ def compare_versions(current: str, latest: str) -> int:
         parts = cleaned.split(".") if cleaned else ["0"]
         numbers = []
         for part in parts:
-            match = re.search(r"\\d+", part)
+            match = re.search(r"\d+", part)
             if match:
                 numbers.append(int(match.group()))
             else:
@@ -394,95 +405,9 @@ class TraePoxyWindow(QtWidgets.QMainWindow):
         self._init_tray()
         self._init_log_timer()
 
-    def _build_basic_group(self) -> QtWidgets.QGroupBox:
-        group = QtWidgets.QGroupBox("基础设置")
-        form = QtWidgets.QFormLayout(group)
-        form.setVerticalSpacing(10)
-
-        self.listen_host = QtWidgets.QLineEdit(self.config.get("listen_host", "127.0.0.1"))
-        self.listen_host.setToolTip("本地监听地址（默认 127.0.0.1）")
-        self.listen_port = QtWidgets.QSpinBox()
-        self.listen_port.setRange(1, 65535)
-        self.listen_port.setValue(int(self.config.get("listen_port", 8443)))
-        self.listen_port.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
-        self.listen_port.setToolTip("本地监听端口（默认 8443）")
-        self.default_upstream = QtWidgets.QLineEdit(
-            self.config.get("default_upstream", "https://newapi.loserrc.com")
-        )
-        self.default_upstream.setToolTip("默认上游地址（未匹配域名时使用）")
-        self.verify_ssl = QtWidgets.QCheckBox()
-        self.verify_ssl.setChecked(bool(self.config.get("verify_upstream_ssl", True)))
-        self.verify_ssl.setToolTip("是否校验上游 HTTPS 证书")
-        self.log_level = QtWidgets.QComboBox()
-        self.log_level.addItems(["DEBUG", "INFO", "WARNING", "ERROR"])
-        self.log_level.setCurrentText(self.config.get("log_level", "INFO"))
-        self.log_level.setToolTip("日志等级")
-        self.log_file = QtWidgets.QLineEdit(self.config.get("log_file", "logs/trae_poxy.log"))
-        self.log_file.setToolTip("日志文件路径（留空仅控制台输出）")
-
-        form.addRow(self._label_with_info("listen_host", "本地监听地址（默认 127.0.0.1）"), self.listen_host)
-        form.addRow(self._label_with_info("listen_port", "本地监听端口（默认 8443）"), self.listen_port)
-        form.addRow(self._label_with_info("default_upstream", "默认上游地址（未匹配域名时使用）"), self.default_upstream)
-        form.addRow(self._label_with_info("verify_upstream_ssl", "是否校验上游 HTTPS 证书"), self.verify_ssl)
-        form.addRow(self._label_with_info("log_level", "日志等级"), self.log_level)
-        form.addRow(self._label_with_info("log_file", "日志文件路径（留空仅控制台输出）"), self.log_file)
-        return group
-
-    def _build_advanced_group(self) -> QtWidgets.QGroupBox:
-        group = QtWidgets.QGroupBox("高级设置")
-        layout = QtWidgets.QVBoxLayout(group)
-        layout.setSpacing(10)
-        self.preserve_host = QtWidgets.QCheckBox("preserve_host")
-        self.preserve_host.setChecked(bool(self.config.get("preserve_host", False)))
-        self.preserve_host.setToolTip("是否保留原始 Host 头（不推荐）")
-        self.log_request_body = QtWidgets.QCheckBox("log_request_body")
-        self.log_request_body.setChecked(bool(self.config.get("log_request_body", False)))
-        self.log_request_body.setToolTip("记录请求体摘要（可能包含用户输入）")
-        self.log_response_body = QtWidgets.QCheckBox("log_response_body")
-        self.log_response_body.setChecked(bool(self.config.get("log_response_body", False)))
-        self.log_response_body.setToolTip("记录上游响应体（影响流式性能）")
-        self.normalize_models = QtWidgets.QCheckBox("normalize_models")
-        self.normalize_models.setChecked(bool(self.config.get("normalize_models", True)))
-        self.normalize_models.setToolTip("仅对 OpenAI 的 /v1/models 进行规范化")
-        layout.addWidget(self._wrap_with_info(self.preserve_host, "是否保留原始 Host 头（不推荐）"))
-        layout.addWidget(self._wrap_with_info(self.log_request_body, "记录请求体摘要（可能包含用户输入）"))
-        layout.addWidget(self._wrap_with_info(self.log_response_body, "记录上游响应体（影响流式性能）"))
-        layout.addWidget(self._wrap_with_info(self.normalize_models, "仅对 OpenAI 的 /v1/models 进行规范化"))
-
-        layout.addWidget(QtWidgets.QLabel("intercept_hosts（一行一个）"))
-        self.intercept_hosts = QtWidgets.QPlainTextEdit(
-            "\n".join(self.config.get("intercept_hosts", []))
-        )
-        self.intercept_hosts.setFixedHeight(120)
-        self.intercept_hosts.setToolTip("需要劫持的域名列表（需配合 hosts）")
-        layout.addWidget(self.intercept_hosts)
-        return group
-
-    def _build_mapping_group(self) -> QtWidgets.QGroupBox:
-        group = QtWidgets.QGroupBox("映射设置（JSON）")
-        layout = QtWidgets.QVBoxLayout(group)
-        layout.setSpacing(10)
-        self.upstream_map = QtWidgets.QPlainTextEdit(
-            json.dumps(self.config.get("upstream_map", {}), ensure_ascii=True, indent=2)
-        )
-        self.upstream_map.setToolTip("按域名指定上游地址的映射表")
-        self.path_rewrite_map = QtWidgets.QPlainTextEdit(
-            json.dumps(self.config.get("path_rewrite_map", {}), ensure_ascii=True, indent=2)
-        )
-        self.path_rewrite_map.setToolTip("按域名配置路径前缀改写")
-        layout.addWidget(self._label_with_info("upstream_map", "按域名指定上游地址的映射表"))
-        layout.addWidget(self.upstream_map)
-        layout.addWidget(self._label_with_info("path_rewrite_map", "按域名配置路径前缀改写"))
-        layout.addWidget(self.path_rewrite_map)
-
-        button_row = QtWidgets.QHBoxLayout()
-        save_btn = QtWidgets.QPushButton("保存配置")
-        save_btn.clicked.connect(self._save_config)
-        save_btn.setToolTip("保存当前配置到 config.json")
-        button_row.addWidget(save_btn)
-        button_row.addStretch(1)
-        layout.addLayout(button_row)
-        return group
+    def _intercept_hosts_from_config(self) -> list[str]:
+        cfg = self.config or load_config()
+        return [h.strip() for h in cfg.get("intercept_hosts", []) if h.strip()]
 
     def _build_system_group(self) -> QtWidgets.QGroupBox:
         group = QtWidgets.QGroupBox("系统操作")
@@ -610,32 +535,6 @@ class TraePoxyWindow(QtWidgets.QMainWindow):
         layout.addLayout(row)
         return group
 
-    def _save_config(self) -> None:
-        try:
-            self.config["listen_host"] = self.listen_host.text().strip()
-            self.config["listen_port"] = self.listen_port.value()
-            self.config["default_upstream"] = self.default_upstream.text().strip()
-            self.config["verify_upstream_ssl"] = self.verify_ssl.isChecked()
-            self.config["log_level"] = self.log_level.currentText()
-            self.config["log_file"] = self.log_file.text().strip()
-            self.config["preserve_host"] = self.preserve_host.isChecked()
-            self.config["log_request_body"] = self.log_request_body.isChecked()
-            self.config["log_response_body"] = self.log_response_body.isChecked()
-            self.config["normalize_models"] = self.normalize_models.isChecked()
-            self.config["intercept_hosts"] = [
-                h.strip() for h in self.intercept_hosts.toPlainText().splitlines() if h.strip()
-            ]
-            self.config["upstream_map"] = json.loads(
-                self.upstream_map.toPlainText().strip() or "{}"
-            )
-            self.config["path_rewrite_map"] = json.loads(
-                self.path_rewrite_map.toPlainText().strip() or "{}"
-            )
-            save_config(self.config)
-            QtWidgets.QMessageBox.information(self, "成功", "已保存 config.json")
-        except json.JSONDecodeError as exc:
-            QtWidgets.QMessageBox.warning(self, "JSON 错误", str(exc))
-
     def _run_init(self) -> None:
         def task():
             code, out, err = run_cmd(_cli_cmd("init"))
@@ -683,9 +582,7 @@ class TraePoxyWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self, "权限不足", "需要管理员权限")
             return
 
-        hosts = [
-            h.strip() for h in self.intercept_hosts.toPlainText().splitlines() if h.strip()
-        ]
+        hosts = self._intercept_hosts_from_config()
 
         def task():
             update_hosts(hosts)
@@ -705,9 +602,7 @@ class TraePoxyWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self, "权限不足", "需要管理员权限")
             return
 
-        hosts = [
-            h.strip() for h in self.intercept_hosts.toPlainText().splitlines() if h.strip()
-        ]
+        hosts = self._intercept_hosts_from_config()
 
         def task():
             remove_hosts(hosts)
@@ -1043,9 +938,7 @@ class TraePoxyWindow(QtWidgets.QMainWindow):
         if is_admin():
             if not ca_installed():
                 self._install_ca()
-            missing = hosts_missing(
-                [h.strip() for h in self.intercept_hosts.toPlainText().splitlines() if h.strip()]
-            )
+            missing = hosts_missing(self._intercept_hosts_from_config())
             if missing:
                 self._write_hosts()
         else:
@@ -1059,7 +952,7 @@ class TraePoxyWindow(QtWidgets.QMainWindow):
             return
 
         def task():
-            hosts = [h.strip() for h in self.intercept_hosts.toPlainText().splitlines() if h.strip()]
+            hosts = self._intercept_hosts_from_config()
             remove_hosts(hosts)
             run_cmd(["certutil", "-delstore", "root", "Trae-Poxy Local CA"])
             return "已还原 hosts 并卸载 Root CA"
@@ -1134,7 +1027,7 @@ class TraePoxyWindow(QtWidgets.QMainWindow):
             data = json.loads(Path(path).read_text(encoding="utf-8"))
             save_config(data)
             self.config = data
-            self._reload_from_config()
+            self._refresh_status()
             QtWidgets.QMessageBox.information(self, "完成", "已导入配置")
         except Exception as exc:  # noqa: BLE001
             QtWidgets.QMessageBox.warning(self, "失败", str(exc))
@@ -1151,22 +1044,6 @@ class TraePoxyWindow(QtWidgets.QMainWindow):
                 QtWidgets.QMessageBox.information(self, "完成", "已导出配置")
         except Exception as exc:  # noqa: BLE001
             QtWidgets.QMessageBox.warning(self, "失败", str(exc))
-
-    def _reload_from_config(self) -> None:
-        config = self.config or load_config()
-        self.listen_host.setText(config.get("listen_host", "127.0.0.1"))
-        self.listen_port.setValue(int(config.get("listen_port", 8443)))
-        self.default_upstream.setText(config.get("default_upstream", "https://newapi.loserrc.com"))
-        self.verify_ssl.setChecked(bool(config.get("verify_upstream_ssl", True)))
-        self.log_level.setCurrentText(config.get("log_level", "INFO"))
-        self.log_file.setText(config.get("log_file", "logs/trae_poxy.log"))
-        self.preserve_host.setChecked(bool(config.get("preserve_host", False)))
-        self.log_request_body.setChecked(bool(config.get("log_request_body", False)))
-        self.log_response_body.setChecked(bool(config.get("log_response_body", False)))
-        self.normalize_models.setChecked(bool(config.get("normalize_models", True)))
-        self.intercept_hosts.setPlainText("\n".join(config.get("intercept_hosts", [])))
-        self.upstream_map.setPlainText(json.dumps(config.get("upstream_map", {}), ensure_ascii=True, indent=2))
-        self.path_rewrite_map.setPlainText(json.dumps(config.get("path_rewrite_map", {}), ensure_ascii=True, indent=2))
 
     def _build_status_bar(self) -> None:
         status = self.statusBar()

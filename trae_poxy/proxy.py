@@ -1,3 +1,14 @@
+"""
+@Project: AI Poxy Tools
+@File: proxy.py
+@Description: MITM proxy core — request interception, upstream forwarding, stream relay, and model normalization.
+@Author: 颖馨瑶 (Ying Xinyao)
+@Contact: admin@loserrc.com | QQ: 1129414920
+@Date: 2026-02-25
+@Version: v1.2.2
+@Copyright: (c) 2026 Ying Xinyao. All rights reserved.
+"""
+
 from __future__ import annotations
 
 import asyncio
@@ -167,8 +178,6 @@ def _rewrite_path(config: Config, host_header: str | None, path: str) -> str:
         return path
     rules = config.path_rewrite_map.get(host) if config.path_rewrite_map else None
     if not rules:
-        if host == "generativelanguage.googleapis.com" and path.startswith("/v1beta/openai/"):
-            return f"/v1/{path[len('/v1beta/openai/'):]}"
         return path
     for src, dst in rules:
         if path.startswith(src):

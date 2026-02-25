@@ -1,3 +1,14 @@
+"""
+@Project: AI Poxy Tools
+@File: run.py
+@Description: CLI entry point — init (certs/config), serve (proxy), and print-hosts commands.
+@Author: 颖馨瑶 (Ying Xinyao)
+@Contact: admin@loserrc.com | QQ: 1129414920
+@Date: 2026-02-25
+@Version: v1.2.2
+@Copyright: (c) 2026 Ying Xinyao. All rights reserved.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -43,7 +54,8 @@ def cmd_serve() -> None:
 
 def cmd_print_hosts() -> None:
     config = load_config()
-    print(f"127.0.0.1 {config.leaf_host}")
+    for host in config.intercept_hosts:
+        print(f"127.0.0.1 {host}")
 
 
 def main() -> None:

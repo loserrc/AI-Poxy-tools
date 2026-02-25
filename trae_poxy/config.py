@@ -1,3 +1,14 @@
+"""
+@Project: AI Poxy Tools
+@File: config.py
+@Description: Configuration dataclass and JSON-based load/save logic for proxy settings.
+@Author: 颖馨瑶 (Ying Xinyao)
+@Contact: admin@loserrc.com | QQ: 1129414920
+@Date: 2026-02-25
+@Version: v1.2.2
+@Copyright: (c) 2026 Ying Xinyao. All rights reserved.
+"""
+
 from __future__ import annotations
 
 import json

@@ -1,3 +1,14 @@
+"""
+@Project: AI Poxy Tools
+@File: certs.py
+@Description: X.509 certificate generation — Root CA and per-host leaf certificates with SAN.
+@Author: 颖馨瑶 (Ying Xinyao)
+@Contact: admin@loserrc.com | QQ: 1129414920
+@Date: 2026-02-25
+@Version: v1.2.2
+@Copyright: (c) 2026 Ying Xinyao. All rights reserved.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
